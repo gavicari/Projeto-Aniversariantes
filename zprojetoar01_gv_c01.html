@@ -1,0 +1,701 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPROJETOAR01_GV_C01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPROJETOAR01_GV_C01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPROJETOAR01_GV_C01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPROJETOAR01_GV_C01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+CLASS lcl_report DEFINITION.
+
+  " Seção Publica
+  PUBLIC SECTION.
+    TYPES:
+        BEGIN OF ty_output,                               " Apresentando tudo o que deve ter na saida!
+            n_pessoal          TYPE p0000-pernr,
+            nome_c             TYPE cname,
+            empre              TYPE bukrs,
+            comp_name          TYPE hrca_company-comp_name,
+            are_rh             TYPE persa,
+            descri_ar_rh       TYPE string,
+            sub_are            TYPE btrtl,
+            descri_sub         TYPE string,
+            grup_empre         TYPE persg,
+            sub_grup_empre     TYPE persk,
+            depen              TYPE famsa,
+            tipo_dep           TYPE string,
+            nome_dep           TYPE pad_cname,
+            data_niver         TYPE gbdat,
+            idade              TYPE int3,
+            sex                TYPE hrpad_gender,
+            faixa              TYPE string,
+            cod_pres           TYPE zprojetoade08_gv,
+            pres               TYPE zprojetoade01_gv,
+            bonus              TYPE string,
+         END OF ty_output,
+
+         " Tabelas Publicas
+         ty_t_output           TYPE TABLE OF ty_output,
+         type_t_p0021          TYPE TABLE OF p0021,
+         type_t_p0002          TYPE TABLE OF p0002,
+         type_t_t500p          TYPE TABLE OF t500p,
+         type_t_t001p          TYPE TABLE OF t001p,
+         type_t_t591s          TYPE TABLE OF t591s,
+         type_t_faixa          TYPE TABLE OF zprojetoat02_gv,
+         type_t_cod_pre        TYPE TABLE OF zprojetoat01_gv,
+         type_t_bonus          TYPE TABLE OF zprojetoat04_gv,
+         type_t_tip_pre        TYPE TABLE OF zprojetoat03_gv.
+
+
+    DATA: mt_output  TYPE ty_t_output.
+
+    " Metodos Publicos
+    METHODS:
+    constructor,
+    build_data,
+    output,
+    show_data,
+    smartform,
+    csv IMPORTING iv_texto TYPE string.
+
+
+    " ALV
+    DATA:
+      mo_alv       TYPE REF TO cl_salv_table,
+      mo_columns   TYPE REF TO cl_salv_columns_table,
+      mo_column    TYPE REF TO cl_salv_column,
+      mo_display   TYPE REF TO cl_salv_display_settings,
+      mo_functions TYPE REF TO cl_salv_functions_list.
+
+
+
+  PRIVATE SECTION.
+    " Seção privada
+    DATA:
+          mt_zprojetoat02_gv TYPE type_t_faixa,
+          mt_zprojetoat01_gv TYPE type_t_cod_pre,
+          mt_zprojetoat04_gv TYPE type_t_bonus,
+          mt_zprojetoat03_gv TYPE type_t_tip_pre,
+
+          mt_dd07t TYPE STANDARD TABLE OF dd07t,
+          mt_p0021 TYPE  type_t_p0021,
+          mt_p0002 TYPE  type_t_p0002,
+          mt_t591s TYPE  type_t_t591s,
+          mt_t500p TYPE  type_t_t500p,
+          mt_t001p TYPE  type_t_t001p.
+
+    " Metodos Privados
+    METHODS:
+           dependente.
+
+
+
+ENDCLASS.                    "lcl_report DEFINITION
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       CLASS lcl_report IMPLEMENTATION</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+CLASS lcl_report IMPLEMENTATION.
+
+  METHOD constructor . " Metodo Construtor
+
+    " Texto de área de RH
+    SELECT *
+      FROM t500p
+      INTO TABLE mt_t500p
+      WHERE molga = '37'.
+    SORT mt_t500p BY persa.
+
+    " Texto da subárea de RH
+    SELECT *
+      FROM t001p
+      INTO TABLE mt_t001p
+      WHERE molga = '37'.
+    SORT mt_t001p BY werks btrtl.
+
+    " Texto do tipo do dependente
+    SELECT *
+      FROM t591s
+      INTO TABLE mt_t591s
+      WHERE infty = '0021' AND
+            sprsl = sy-langu.
+    SORT mt_t591s BY subty.
+
+    " Tabela do codigo de presente
+    SELECT *
+      FROM zprojetoat01_gv
+      INTO TABLE mt_zprojetoat01_gv.
+    SORT mt_zprojetoat01_gv BY codpres.
+
+    " Tabela das faixas de idade
+    SELECT *
+      FROM zprojetoat02_gv
+      INTO TABLE mt_zprojetoat02_gv.
+    SORT mt_zprojetoat02_gv BY faixa.
+
+    " Tabela Bonus por funcionario
+    SELECT *
+      FROM zprojetoat04_gv
+      INTO TABLE mt_zprojetoat04_gv.
+    SORT mt_zprojetoat04_gv BY persg persk.
+
+    " Tabela Presentes por faixa
+    SELECT *
+      FROM zprojetoat03_gv
+      INTO TABLE mt_zprojetoat03_gv.
+    SORT mt_zprojetoat03_gv BY faixa.
+
+    " Tabela de Texto do Dominio BONUS
+    SELECT *
+      FROM dd07t
+      INTO TABLE mt_dd07t
+      WHERE domname = 'ZPROJETOAD02_GV'
+      AND ddlanguage = sy-langu.
+
+
+  ENDMETHOD.       "constructor
+  METHOD build_data. " Monta os dados
+
+    DATA:
+          ls_p0021                 TYPE p0021,
+          ls_t500p                 TYPE t500p,
+          ls_t001p                 TYPE t001p,
+          ls_dd07t                 TYPE dd07t,
+          ls_zprojetoat01_gv       TYPE zprojetoat01_gv,
+          ls_zprojetoat02_gv       TYPE zprojetoat02_gv,
+          ls_zprojetoat03_gv       TYPE zprojetoat03_gv,
+          ls_zprojetoat04_gv       TYPE zprojetoat04_gv,
+          lv_idade                 TYPE numc3,
+          lv_faixa                 TYPE zprojetoade02_gv,
+          ls_output                TYPE ty_output.
+
+
+
+
+    READ TABLE p0021 TRANSPORTING NO FIELDS        " Checagem da tela de seleção, caso não tenha aniversario no mês, não apresenta
+    WITH KEY fgbdt+4(2) = p_niver.
+
+    CHECK sy-subrc EQ 0.
+
+    ls_output-n_pessoal = p0000-pernr.            " Matricula / N° Pessoal
+    ls_output-nome_c     = p0002-cname.           " Nome completo
+
+    IF p_niver IS INITIAL OR p0002-gbdat &lt;&gt; p_niver.
+      ls_output-data_niver = p0002-gbdat.           " Data de aniversario
+    ENDIF.
+
+    IF  p0002-gesch = '1'.                        " Sexo Masculino ou Feminino
+      ls_output-sex = 'M'.
+    ELSE.
+      ls_output-sex = 'F'.
+
+    ENDIF.
+
+    " Função para calculo de idade
+    CLEAR:lv_idade.
+    call function <a href ="zabap22f01_gv/zabap22f01_gv.html">'ZABAP22F01_GV'</a>
+      EXPORTING
+        iv_data_nasc = ls_output-data_niver
+      IMPORTING
+        ev_idade     = lv_idade.
+    ls_output-idade = lv_idade.
+
+
+
+    ls_output-empre           = p0001-bukrs.      " Empresa
+    ls_output-are_rh          = p0001-werks.      " Area RH
+    ls_output-sub_are         = p0001-btrtl.      " Sub Area do RH
+    ls_output-grup_empre      = p0001-persg.      " Grupo de Empregados
+    ls_output-sub_grup_empre  = p0001-persk.      " Sub Grup de Empregados
+
+
+
+    " FUNÇÃO PARA NOME DA EMPRESA
+    CALL FUNCTION 'HR_BR_LER_EMPRESA'
+      EXPORTING
+        company_code = p0001-bukrs
+        language     = sy-langu
+      IMPORTING
+        company_name = ls_output-comp_name.
+
+
+    " Texto Area do RH
+    CLEAR:ls_t500p.
+    READ TABLE mt_t500p INTO ls_t500p
+    WITH KEY persa = p0001-werks BINARY SEARCH.
+    ls_output-descri_ar_rh = ls_t500p-name1.
+
+
+
+    "Texto Sub Area do RH
+    CLEAR: ls_t001p.
+    READ TABLE mt_t001p INTO ls_t001p
+    WITH KEY werks = p0001-werks btrtl = p0001-btrtl BINARY SEARCH.
+    ls_output-descri_sub = ls_t001p-btext.
+
+
+    " Tabela de Bonus
+    IF p0002-gbdat+4(2) = p_niver.  "Condição para não apresentar BONUS se não for o aniversario
+
+      CLEAR:ls_zprojetoat04_gv.
+      READ TABLE  mt_zprojetoat04_gv INTO ls_zprojetoat04_gv
+      WITH KEY persg = p0001-persg persk = p0001-persk BINARY SEARCH.
+
+      " Tabela de texto para BONUS
+      READ TABLE mt_dd07t INTO ls_dd07t
+      WITH KEY domvalue_l = ls_zprojetoat04_gv-bonus BINARY SEARCH.
+      ls_output-bonus = ls_zprojetoat04_gv-bonus && | | && ls_dd07t-ddtext.
+
+    ENDIF.
+
+
+    " Aonde as informações do colaborador estão sendo armazenadas
+    APPEND ls_output TO mt_output.
+    CLEAR ls_output.
+
+    "Loop de dependentes
+    me-&gt;dependente( ).
+
+
+  ENDMETHOD.                    "build_data
+  METHOD dependente.  " Dependentes
+
+
+    DATA:
+          ls_t591s                 TYPE t591s,
+          ls_p0002                 TYPE p0002,
+          ls_output                TYPE ty_output,
+          ls_empregado             TYPE ty_output,
+          lv_resultado             TYPE numc3,
+          ls_calc                  TYPE ty_output,
+          ls_dat_nasc              TYPE p0021,
+          lv_idade                 TYPE numc3,
+          ls_p0021                 TYPE p0021,
+          ls_zprojetoat01_gv       TYPE zprojetoat01_gv,
+          ls_zprojetoat02_gv       TYPE zprojetoat02_gv,
+          ls_zprojetoat03_gv       TYPE zprojetoat03_gv,
+          ls_zprojetoat04_gv       TYPE zprojetoat04_gv,
+          lv_faixa                 TYPE zprojetoat02_gv.
+
+
+
+
+    DATA:  lv_lines  TYPE i.
+
+
+    lv_lines = lines( mt_output ). " Mantem o campo do ALV preenchido com os Dados do Colaborador
+
+
+    READ TABLE mt_output INTO ls_empregado        " Puxando as informaçõs do empregado para saber se existem dependentes
+    INDEX lv_lines.
+
+
+    IF p_niver IS NOT INITIAL.
+
+
+      LOOP AT p0021 INTO ls_p0021 WHERE pernr = p0000-pernr AND fgbdt+4(2) = p_niver.  " Loop para verificar Dependentes
+
+        ls_output                  = ls_empregado.           " Jogando as informações para uma unica saida
+        ls_output-depen            = ls_p0021-famsa.         " Depente
+        ls_output-nome_dep         = ls_p0021-fcnam.         " Nome do Dependente
+
+        CLEAR:ls_output-bonus.
+
+
+        IF  ls_p0021-fasex = '1'.                            " Sexo Masculino ou Feminino
+          ls_output-sex = 'M'.
+        ELSE.
+          ls_output-sex = 'F'.
+
+        ENDIF.
+
+        " Texto Do Tipo do Dependente
+        CLEAR: ls_t591s.
+        READ TABLE mt_t591s INTO ls_t591s
+        WITH KEY subty = ls_p0021-subty BINARY SEARCH.
+        ls_output-tipo_dep  = ls_t591s-stext.
+
+        ls_output-data_niver = ls_p0021-fgbdt. "Data de aniversario do dependente
+
+
+        " Função para calculo de idade
+        CLEAR:lv_idade.
+        call function <a href ="zabap22f01_gv/zabap22f01_gv.html">'ZABAP22F01_GV'</a>
+          EXPORTING
+            iv_data_nasc = ls_output-data_niver
+          IMPORTING
+            ev_idade     = lv_idade.
+        ls_output-idade = lv_idade.
+
+
+        LOOP AT mt_zprojetoat02_gv INTO ls_zprojetoat02_gv  "Loop para verificar e informar a FAIXA de idade
+          WHERE idade_min &lt;= ls_output-idade
+          AND idade_max &gt;= ls_output-idade.
+
+          ls_output-faixa = ls_zprojetoat02_gv-faixa && | | &&    "Concatenação dos Campos FAIXA e IDADE
+          ls_zprojetoat02_gv-idade_min && | | && 'Anos Até' && | | &&
+          ls_zprojetoat02_gv-idade_max && | | && 'Anos'.
+
+          "Tabela para codigo do presente
+          CLEAR:ls_zprojetoat03_gv.
+          READ TABLE  mt_zprojetoat03_gv INTO ls_zprojetoat03_gv
+          WITH KEY faixa = ls_zprojetoat02_gv-faixa BINARY SEARCH.
+          ls_output-cod_pres = ls_zprojetoat03_gv-codpres.
+
+          "Tabela de presentes.
+          CLEAR:ls_zprojetoat01_gv.
+          READ TABLE  mt_zprojetoat01_gv INTO ls_zprojetoat01_gv
+          WITH KEY codpres = ls_zprojetoat03_gv-codpres BINARY SEARCH.
+          ls_output-pres = ls_zprojetoat01_gv-descr.
+
+        ENDLOOP.
+
+        APPEND ls_output TO mt_output.   " Aonde os campos que estão sendo preenchidos para a tabela que estão sendo armazenados
+        CLEAR ls_output. "Limpando campos
+
+      ENDLOOP.
+    ENDIF.
+
+  ENDMETHOD.     "dependente
+  METHOD show_data.
+    TRY .
+
+<font color ="#0000FF">* Monta objeto com todos os atributos e caracteristicas do ALV</font>
+        CALL METHOD cl_salv_table=&gt;factory
+          IMPORTING
+            r_salv_table = mo_alv
+          CHANGING
+            t_table      = mt_output.
+
+      CATCH cx_salv_msg.
+    ENDTRY.
+    TRY .
+
+
+<font color ="#0000FF">* Armazena em objeto caracteristicas das colunas (campos)</font>
+        mo_columns = mo_alv-&gt;get_columns( ).
+
+<font color ="#0000FF">* Otimiza tamanho dos campos</font>
+        mo_columns-&gt;set_optimize( abap_true ).
+
+<font color ="#0000FF">* Armazena caracteristiscas de um campos especifico</font>
+        mo_column = mo_columns-&gt;get_column( 'DESCRI_AR_RH' ).  "DESCRI_AR_RH
+<font color ="#0000FF">* Altera texto</font>
+        mo_column-&gt;set_long_text( 'Descrição area do RH' ).
+        mo_column-&gt;set_medium_text( 'Descrição area RH' ).
+        mo_column-&gt;set_short_text( 'Descri RH' ).
+
+<font color ="#0000FF">* Armazena caracteristiscas de um campos especifico</font>
+        mo_column = mo_columns-&gt;get_column( 'DESCRI_SUB' ).
+<font color ="#0000FF">* Altera texto</font>
+        mo_column-&gt;set_long_text( 'Descrição Sub Tipo' ).
+        mo_column-&gt;set_medium_text( 'Descrição Sub' ).
+        mo_column-&gt;set_short_text( 'Descri Sub' ).
+
+<font color ="#0000FF">* Armazena caracteristiscas de um campos especifico</font>
+        mo_column = mo_columns-&gt;get_column( 'TIPO_DEP' ).
+<font color ="#0000FF">* Altera texto</font>
+        mo_column-&gt;set_long_text( 'Tipo de Dependente' ).
+        mo_column-&gt;set_medium_text( 'Tipo Dependente' ).
+        mo_column-&gt;set_short_text( 'Tip Dep' ).
+
+<font color ="#0000FF">* Armazena caracteristiscas de um campos especifico</font>
+        mo_column = mo_columns-&gt;get_column( 'FAIXA' ).
+<font color ="#0000FF">* Altera texto</font>
+        mo_column-&gt;set_long_text( 'Faixa de Idade' ).
+        mo_column-&gt;set_medium_text( 'Faixa Idade' ).
+        mo_column-&gt;set_short_text( 'Faixa' ).
+
+<font color ="#0000FF">* Armazena caracteristiscas de um campos especifico</font>
+        mo_column = mo_columns-&gt;get_column( 'BONUS' ).
+<font color ="#0000FF">* Altera texto</font>
+        mo_column-&gt;set_long_text( 'Bonus do Funcionario' ).
+        mo_column-&gt;set_medium_text( 'Bonus Funcionario' ).
+        mo_column-&gt;set_short_text( 'Bonus' ).
+
+<font color ="#0000FF">* Armazena caracteristiscas de um campos especifico</font>
+        mo_column = mo_columns-&gt;get_column( 'IDADE' ).
+<font color ="#0000FF">* Altera texto</font>
+        mo_column-&gt;set_long_text( 'Idade' ).
+        mo_column-&gt;set_medium_text( 'Idade' ).
+        mo_column-&gt;set_short_text( 'Idade' ).
+
+<font color ="#0000FF">* Armazena em objeto caracteristicas das funções do ALV</font>
+        mo_functions = mo_alv-&gt;get_functions( ).
+<font color ="#0000FF">* Seta todas as funções do ALV</font>
+        mo_functions-&gt;set_all( abap_true ).
+
+<font color ="#0000FF">* Armazena em objeto caracteristicas de apresentação da tela</font>
+        mo_display = mo_alv-&gt;get_display_settings( ).
+<font color ="#0000FF">* Seta linhas zebradas</font>
+        mo_display-&gt;set_striped_pattern( abap_true ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+<font color ="#0000FF">* Apresenta relatório</font>
+    CALL METHOD mo_alv-&gt;display.
+
+
+  ENDMETHOD.                    "show_data
+
+  METHOD smartform.        " Codigo para o smartform
+
+    DATA:  ls_output     TYPE ty_output,
+           ls_funcio     TYPE zprojetoas01_gv,
+           ls_depend     TYPE zprojetoas02_gv,
+           ls_presen     TYPE zprojetoas03_gv,
+           ls_controle   TYPE zprojetoas04_gv,
+           lt_controle   TYPE zprojetoatt04_gv,
+           lt_mes        TYPE TABLE OF t247,
+           ls_mes        TYPE  t247,
+           lv_sf_name    TYPE  tdsfname,
+           lv_fm_name    TYPE  rs38l_fnam.
+
+
+
+    CALL FUNCTION 'MONTH_NAMES_GET'  " Função que mostra o mês que coloca na tela de seleção no smartform
+      TABLES
+        month_names           = lt_mes
+      EXCEPTIONS
+        month_names_not_found = 1
+        OTHERS                = 2.
+    IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+    ENDIF.
+
+
+    READ TABLE lt_mes INTO ls_mes               " Tabela que tem os campos dos meses e o texto do mês
+    WITH KEY  mnr  =  p_niver BINARY SEARCH.
+    ls_controle-mes_niver = ls_mes-mnr && | | && ls_mes-ltx.
+
+
+    LOOP AT mt_output INTO ls_output.     " Fazendo um loop em uma tabela para uma estrutura
+
+
+      CLEAR: ls_funcio.
+      CLEAR: ls_controle-dados_fun.
+
+      ls_funcio-n_pessoal = ls_output-n_pessoal.                          " Informação do funcionario
+      ls_funcio-nome  =  ls_output-nome_c.
+      ls_funcio-empresa = ls_output-empre && | | && '-' && | | && ls_output-comp_name.
+      ls_funcio-area_rh = ls_output-are_rh && | | && '-' && | | && ls_output-descri_ar_rh.
+      ls_funcio-subarea_rh = ls_output-sub_are && | | && '-' && | | && ls_output-descri_sub.
+      APPEND ls_funcio TO ls_controle-dados_fun.
+
+
+
+      CLEAR: ls_depend.
+      CLEAR: ls_controle-dados_ani.
+
+      IF ls_output-tipo_dep IS INITIAL.    " Preenchimento se é dependente ou não
+        ls_depend-depen = 'NÃO'.
+      ELSE.
+        ls_depend-depen = 'SIM'.
+      ENDIF.
+
+
+      ls_depend-tp_dep  = ls_output-depen && | | && '-' && | | && ls_output-tipo_dep.
+      ls_depend-nome_dep = ls_output-nome_dep.
+
+
+      ls_depend-data_nasc = ls_output-data_niver+6(2) && | | &&
+      ls_output-data_niver+4(2) && | | &&
+      ls_output-data_niver(4).
+
+
+
+      APPEND ls_depend TO ls_controle-dados_ani.
+
+
+      CLEAR: ls_presen.
+      CLEAR: ls_controle-dados_pres.
+
+
+      ls_presen-idade = ls_output-idade.
+
+
+      IF ls_output-sex = 'F'.
+        ls_presen-sexo = 'Feminino'.
+      ELSE.
+        ls_presen-sexo = 'Masculino'.
+      ENDIF.
+
+      ls_presen-faixa = ls_output-faixa.
+
+      IF ls_output-cod_pres IS NOT INITIAL.
+        ls_presen-presente = ls_output-cod_pres && | | && '-' && | | && ls_output-pres.
+      ELSE.
+        ls_presen-presente = '-'.
+      ENDIF.
+
+      IF ls_output-bonus IS NOT INITIAL.
+        ls_presen-bonus = ls_output-bonus.
+      ELSE.
+        ls_presen-bonus = '-'.
+      ENDIF.
+
+
+      APPEND ls_presen TO ls_controle-dados_pres.
+
+
+      APPEND ls_controle TO lt_controle.
+
+    ENDLOOP.
+
+    lv_sf_name = 'ZPROJETOASF01_GV'.
+    CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+      EXPORTING
+        formname           = lv_sf_name
+      IMPORTING
+        fm_name            = lv_fm_name
+      EXCEPTIONS
+        no_form            = 1
+        no_function_module = 2
+        OTHERS             = 3.
+    IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+    ENDIF.
+
+    CALL FUNCTION lv_fm_name
+      EXPORTING
+        it_controle = lt_controle.
+    IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+    ENDIF.
+
+
+
+  ENDMETHOD.                    "smartform
+
+  METHOD csv.
+
+    TYPES: BEGIN OF ty_csv,
+            campo TYPE string,
+           END OF ty_csv.
+
+    DATA: lv_header TYPE string.
+
+    DATA: lt_saida_csv TYPE TABLE OF ty_csv.
+
+    DATA: ls_output TYPE ty_output,
+          ls_header     TYPE ty_csv.
+
+    lv_header = 'Matrícula'               && ';' &&
+                'Nome completo'           && ';' &&
+                'Código da empresa'       && ';' &&
+                'Nome da empresa'         && ';' &&
+                'Área RH'                 && ';' &&
+                'Descrição da área do RH' && ';' &&
+                'Subárea do RH'           && ';' &&
+                'Descrição da Subárea'    && ';' &&
+                'Grupo Empresa'           && ';' &&
+                'Sub Grupo Empresa'       && ';' &&
+                'Código do dependente'    && ';' &&
+                'Tipo do dependente'      && ';' &&
+                'Nome do dependente'      && ';' &&
+                'Data nascimento'         && ';' &&
+                'Idade'                   && ';' &&
+                'Sexo'                    && ';' &&
+                'Faixa de idade'          && ';' &&
+                'Código do presente'      && ';' &&
+                'Presente'                && ';' &&
+                'Bônus'.
+
+    ls_header-campo = lv_header.
+    APPEND ls_header TO lt_saida_csv.
+
+    LOOP AT mt_output INTO ls_output.
+
+      CLEAR ls_header.
+      ls_header-campo = ls_output-n_pessoal       && ';' &&
+                            ls_output-nome_c          && ';' &&
+                            ls_output-empre           && ';' &&
+                            ls_output-comp_name       && ';' &&
+                            ls_output-are_rh          && ';' &&
+                            ls_output-descri_ar_rh    && ';' &&
+                            ls_output-sub_are         && ';' &&
+                            ls_output-descri_sub      && ';' &&
+                            ls_output-grup_empre      && ';' &&
+                            ls_output-sub_grup_empre  && ';' &&
+                            ls_output-depen           && ';' &&
+                            ls_output-tipo_dep        && ';' &&
+                            ls_output-nome_dep        && ';' &&
+                            ls_output-data_niver      && ';' &&
+                            ls_output-idade           && ';' &&
+                            ls_output-sex             && ';' &&
+                            ls_output-faixa           && ';' &&
+                            ls_output-cod_pres        && ';' &&
+                            ls_output-pres            && ';' &&
+                            ls_output-bonus.
+
+      APPEND ls_header TO lt_saida_csv.
+    ENDLOOP.
+
+
+    CALL FUNCTION 'GUI_DOWNLOAD'
+      EXPORTING
+        filename                = iv_texto
+<font color ="#0000FF">*       filetype                = 'ASC'</font>
+      TABLES
+        data_tab                = lt_saida_csv
+      EXCEPTIONS
+        file_write_error        = 1
+        no_batch                = 2
+        gui_refuse_filetransfer = 3
+        invalid_type            = 4
+        no_authority            = 5
+        unknown_error           = 6
+        header_not_allowed      = 7
+        separator_not_allowed   = 8
+        filesize_not_allowed    = 9
+        header_too_long         = 10
+        dp_error_create         = 11
+        dp_error_send           = 12
+        dp_error_write          = 13
+        unknown_dp_error        = 14
+        access_denied           = 15
+        dp_out_of_memory        = 16
+        disk_full               = 17
+        dp_timeout              = 18
+        file_not_found          = 19
+        dataprovider_exception  = 20
+        control_flush_error     = 21
+        OTHERS                  = 22.
+    IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+    ENDIF.
+
+  ENDMETHOD.                    "csv
+
+  METHOD output.
+
+    IF mt_output IS NOT INITIAL.
+      IF p_alv = abap_true.
+        go_report-&gt;show_data( ).   " Objeto Report Chama a classe que apresenta os dados em ALV
+      ELSEIF p_smf = abap_true.
+        go_report-&gt;smartform( ).  " Objeto Report Chama a classe que apresenta os dados em SMARTFORM
+      ELSEIF p_csv = abap_true.
+        go_report-&gt;csv( EXPORTING iv_texto = p_arquiv ).        " Objeto Report Chama a classe que apresenta os dados em CSV
+      ENDIF.
+    ELSE.
+      MESSAGE i001(zhcm) WITH p_niver.  " Mensagem de erro caso o mês não seja encontrado
+    ENDIF.
+
+
+  ENDMETHOD.                    "output
+
+
+
+ENDCLASS.                    "lcl_report IMPLEMENTATION
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 731
+</font>
+</body>
+</html>

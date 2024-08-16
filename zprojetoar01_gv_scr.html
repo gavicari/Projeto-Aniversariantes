@@ -1,0 +1,56 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPROJETOAR01_GV_SCR</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPROJETOAR01_GV_SCR</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPROJETOAR01_GV_SCR</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPROJETOAR01_GV_SCR</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+
+" Tela de seleção mês de aniversario.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-t01.
+PARAMETERS: p_niver TYPE month OBLIGATORY.
+SELECTION-SCREEN END OF BLOCK b1.
+
+
+" Tela de seleção tipo de relatorio.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE text-t02.
+PARAMETERS: p_alv    RADIOBUTTON GROUP rb1 USER-COMMAND esconde_csv DEFAULT 'X',
+            p_smf    RADIOBUTTON GROUP rb1,
+            p_csv    RADIOBUTTON GROUP rb1,
+            p_arquiv TYPE string MODIF ID t1.
+
+SELECTION-SCREEN END OF BLOCK b2.
+
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM esconde_csv.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ESCONDE_CSV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM ESCONDE_CSV.
+
+  LOOP AT SCREEN.
+    IF p_csv &lt;&gt; abap_true.
+      IF screen-group1 = 'T1'.
+        screen-invisible = 1.
+        screen-input     = 0.
+        screen-active    = 0.
+        MODIFY SCREEN.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    " ESCONDE_CSV
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 731
+</font>
+</body>
+</html>

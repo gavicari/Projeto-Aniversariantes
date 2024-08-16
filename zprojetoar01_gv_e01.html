@@ -1,0 +1,37 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPROJETOAR01_GV_E01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPROJETOAR01_GV_E01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPROJETOAR01_GV_E01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPROJETOAR01_GV_E01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+
+START-OF-SELECTION.
+
+   CREATE OBJECT go_report. " Objeto Criado para chamar a classe
+
+GET peras. "Loop banco de dados logico PNPECE
+
+rp_provide_from_last p0000 space pn-begda pn-endda.
+rp_provide_from_last p0001 space pn-begda pn-endda.
+rp_provide_from_last p0002 space pn-begda pn-endda.
+
+ go_report-&gt;build_data( ). " Objeto Report Chama a classe que monta os dados
+
+END-OF-SELECTION.
+
+go_report-&gt;output( ). " Objeto Report Chama a classe que apresenta qualquer um dos relatorios
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 731
+</font>
+</body>
+</html>
